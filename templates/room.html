@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text-Club &mdash; Instant Text Sharing</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .container { max-width: 480px; width: 100%; text-align: center; }
+
+        .logo {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: -1px;
+            background: linear-gradient(135deg, #38bdf8, #818cf8, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 12px;
+        }
+
+        .tagline { font-size: 1rem; color: #94a3b8; margin-bottom: 48px; line-height: 1.6; }
+
+        .card {
+            background: #1e2130;
+            border: 1px solid #2d3148;
+            border-radius: 16px;
+            padding: 36px 32px;
+        }
+
+        .card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; color: #e2e8f0; }
+        .card p { font-size: 0.875rem; color: #64748b; margin-bottom: 28px; line-height: 1.6; }
+
+        .btn-create {
+            display: inline-block;
+            width: 100%;
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #38bdf8, #f472b6);
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-create:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-create:active { transform: translateY(0); }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 24px 0;
+            color: #334155;
+            font-size: 0.8rem;
+        }
+
+        .divider::before, .divider::after {
+            content: "";
+            flex: 1;
+            height: 1px;
+            background: #2d3148;
+        }
+
+        .join-form { display: flex; gap: 8px; }
+
+        .join-input {
+            flex: 1;
+            padding: 12px 14px;
+            background: #0f1117;
+            border: 1px solid #2d3148;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .join-input::placeholder { color: #475569; }
+        .join-input:focus { border-color: #38bdf8; }
+
+        .btn-join {
+            padding: 12px 18px;
+            background: #2d3148;
+            color: #e2e8f0;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border: 1px solid #3d4268;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-join:hover { background: #3d4268; }
+
+        .steps {
+            margin-top: 40px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+
+        .step {
+            background: #1e2130;
+            border: 1px solid #2d3148;
+            border-radius: 12px;
+            padding: 16px 12px;
+            font-size: 0.8rem;
+            color: #64748b;
+            line-height: 1.5;
+        }
+
+        .step-num {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #38bdf8, #f472b6);
+            color: white;
+            font-weight: 700;
+            font-size: 0.8rem;
+            border-radius: 50%;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">Text-Club</div>
+        <p class="tagline">Instantly share text between any of your devices.<br>No login. No install. Just open and paste.</p>
+
+        <div class="card">
+            <h2>Create a new room</h2>
+            <p>Get a private link you can open on any other device to sync text in real time.</p>
+            <a href="/new" class="btn-create">Create Room</a>
+
+            <div class="divider">or join an existing room</div>
+
+            <form class="join-form" onsubmit="joinRoom(event)">
+                <input class="join-input" id="room-code" type="text"
+                    placeholder="Enter room code (e.g. a3f2c1b4)"
+                    maxlength="8" autocomplete="off" />
+                <button class="btn-join" type="submit">Join</button>
+            </form>
+        </div>
+
+        <div class="steps">
+            <div class="step"><div class="step-num">1</div><br>Create a room and copy the link</div>
+            <div class="step"><div class="step-num">2</div><br>Open the link on another device</div>
+            <div class="step"><div class="step-num">3</div><br>Type — it appears instantly everywhere</div>
+        </div>
+    </div>
+
+    <script>
+        function joinRoom(e) {
+            e.preventDefault();
+            const raw  = document.getElementById("room-code").value.trim().toLowerCase();
+            const code = raw.replace(/[^0-9a-f]/g, "").slice(0, 8);
+            if (code.length === 8) {
+                window.location.href = "/room/" + code;
+            } else {
+                const input = document.getElementById("room-code");
+                input.style.borderColor = "#f472b6";
+                input.placeholder = "Must be an 8-character room code";
+                setTimeout(() => {
+                    input.style.borderColor = "";
+                    input.placeholder = "Enter room code (e.g. a3f2c1b4)";
+                }, 2500);
+            }
+        }
+    </script>
+</body>
+</html>
