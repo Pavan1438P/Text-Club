@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Text-Club &mdash; Instant Text Sharing</title>
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.socket.io; connect-src *; style-src 'self' 'unsafe-inline';" />
+    <title>Room {{ room_id }} &mdash; Text-Club</title>
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -14,75 +17,136 @@
             min-height: 100vh;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
         }
 
-        .container { max-width: 480px; width: 100%; text-align: center; }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 13px 20px;
+            background: #1e2130;
+            border-bottom: 1px solid #2d3148;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
 
-        .logo {
-            font-size: 2.8rem;
+        .header-left { display: flex; align-items: center; gap: 12px; }
+
+        .logo-link {
+            font-size: 1.3rem;
             font-weight: 800;
-            letter-spacing: -1px;
-            background: linear-gradient(135deg, #38bdf8, #818cf8, #f472b6);
+            background: linear-gradient(135deg, #38bdf8, #f472b6);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 12px;
-        }
-
-        .tagline { font-size: 1rem; color: #94a3b8; margin-bottom: 48px; line-height: 1.6; }
-
-        .card {
-            background: #1e2130;
-            border: 1px solid #2d3148;
-            border-radius: 16px;
-            padding: 36px 32px;
-        }
-
-        .card h2 { font-size: 1.2rem; font-weight: 600; margin-bottom: 8px; color: #e2e8f0; }
-        .card p { font-size: 0.875rem; color: #64748b; margin-bottom: 28px; line-height: 1.6; }
-
-        .btn-create {
-            display: inline-block;
-            width: 100%;
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #38bdf8, #f472b6);
-            color: #fff;
-            font-size: 1rem;
-            font-weight: 600;
             text-decoration: none;
-            border-radius: 10px;
-            border: none;
-            cursor: pointer;
-            transition: opacity 0.2s, transform 0.1s;
         }
 
-        .btn-create:hover { opacity: 0.9; transform: translateY(-1px); }
-        .btn-create:active { transform: translateY(0); }
+        .room-badge {
+            background: #0f1117;
+            border: 1px solid #2d3148;
+            border-radius: 6px;
+            padding: 4px 10px;
+            font-size: 0.78rem;
+            color: #64748b;
+            font-family: monospace;
+        }
 
-        .divider {
+        .room-badge span { color: #38bdf8; font-weight: 600; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
+
+        .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: #475569;
+            transition: background 0.3s;
+        }
+
+        .status-dot.connected { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+        .status-label { font-size: 0.8rem; color: #64748b; }
+
+        .btn-sm {
+            padding: 7px 14px;
+            background: #2d3148;
+            color: #e2e8f0;
+            font-size: 0.82rem;
+            font-weight: 600;
+            border: 1px solid #3d4268;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-sm:hover { background: #3d4268; }
+        .btn-sm.copied { background: #166534; border-color: #15803d; color: #86efac; }
+
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            gap: 20px;
+            max-width: 900px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .url-bar {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin: 24px 0;
-            color: #334155;
+            gap: 8px;
+            background: #1e2130;
+            border: 1px solid #2d3148;
+            border-radius: 10px;
+            padding: 9px 14px;
+        }
+
+        .url-bar-text {
+            flex: 1;
             font-size: 0.8rem;
+            color: #64748b;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-family: monospace;
         }
 
-        .divider::before, .divider::after {
-            content: "";
-            flex: 1;
-            height: 1px;
-            background: #2d3148;
+        .url-bar-text span { color: #38bdf8; }
+
+        .create-card {
+            background: #1e2130;
+            border: 1px solid #2d3148;
+            border-radius: 14px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: border-color 0.2s;
         }
 
-        .join-form { display: flex; gap: 8px; }
+        .create-card.editing-mode { border-color: #f59e0b66; }
 
-        .join-input {
-            flex: 1;
-            padding: 12px 14px;
+        .create-card h3 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #94a3b8;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .edit-mode-banner {
+            display: none;
+            font-size: 0.75rem;
+            color: #f59e0b;
+            font-weight: 600;
+            text-transform: none;
+        }
+
+        .label-input {
+            padding: 10px 13px;
             background: #0f1117;
             border: 1px solid #2d3148;
             border-radius: 8px;
@@ -90,101 +154,398 @@
             font-size: 0.9rem;
             outline: none;
             transition: border-color 0.2s;
+            font-family: inherit;
         }
 
-        .join-input::placeholder { color: #475569; }
-        .join-input:focus { border-color: #38bdf8; }
+        .label-input::placeholder { color: #475569; }
+        .label-input:focus { border-color: #38bdf8; }
 
-        .btn-join {
-            padding: 12px 18px;
-            background: #2d3148;
+        .text-input {
+            padding: 12px 13px;
+            background: #0f1117;
+            border: 1px solid #2d3148;
+            border-radius: 8px;
             color: #e2e8f0;
-            font-size: 0.9rem;
+            font-size: 0.92rem;
+            line-height: 1.7;
+            outline: none;
+            resize: vertical;
+            min-height: 110px;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        .text-input::placeholder { color: #334155; }
+        .text-input:focus { border-color: #38bdf8; }
+
+        .create-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .char-hint { font-size: 0.78rem; color: #475569; }
+        .form-actions { display: flex; gap: 8px; align-items: center; }
+
+        .btn-cancel {
+            padding: 10px 18px;
+            background: transparent;
+            color: #64748b;
+            font-size: 0.92rem;
             font-weight: 600;
-            border: 1px solid #3d4268;
+            border: 1px solid #2d3148;
             border-radius: 8px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            display: none;
         }
 
-        .btn-join:hover { background: #3d4268; }
+        .btn-cancel:hover { background: #2d3148; color: #94a3b8; }
 
-        .steps {
-            margin-top: 40px;
+        .btn-club {
+            padding: 10px 24px;
+            background: linear-gradient(135deg, #38bdf8, #f472b6);
+            color: #fff;
+            font-size: 0.92rem;
+            font-weight: 700;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn-club:hover { opacity: 0.88; transform: translateY(-1px); }
+        .btn-club:active { transform: translateY(0); }
+        .btn-club.editing { background: linear-gradient(135deg, #f59e0b, #f472b6); }
+
+        .clips-header { display: flex; align-items: center; justify-content: space-between; }
+        .clips-title { font-size: 0.85rem; color: #64748b; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+        .clips-count { font-size: 0.78rem; color: #475569; }
+
+        .clips-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 16px;
         }
 
-        .step {
+        .empty-state {
+            grid-column: 1 / -1;
+            text-align: center;
+            padding: 40px 20px;
+            color: #334155;
+            font-size: 0.9rem;
+            line-height: 1.7;
+        }
+
+        .clip-card {
             background: #1e2130;
             border: 1px solid #2d3148;
             border-radius: 12px;
-            padding: 16px 12px;
-            font-size: 0.8rem;
-            color: #64748b;
-            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: border-color 0.2s;
+            animation: fadeIn 0.25s ease;
         }
 
-        .step-num {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 28px;
-            height: 28px;
-            background: linear-gradient(135deg, #38bdf8, #f472b6);
-            color: white;
-            font-weight: 700;
-            font-size: 0.8rem;
-            border-radius: 50%;
-            margin-bottom: 8px;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
+
+        .clip-card:hover { border-color: #3d4268; }
+
+        .clip-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px 10px;
+            border-bottom: 1px solid #2d3148;
+            gap: 8px;
+        }
+
+        .clip-label {
+            font-size: 0.88rem;
+            font-weight: 700;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+            background: linear-gradient(135deg, #38bdf8, #f472b6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .clip-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+        .clip-btn {
+            padding: 4px 10px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            border-radius: 5px;
+            border: 1px solid #3d4268;
+            background: #2d3148;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .clip-btn:hover { background: #3d4268; color: #e2e8f0; }
+        .clip-btn.copy-done { background: #166534; border-color: #15803d; color: #86efac; }
+        .clip-btn.delete-btn:hover { background: #7f1d1d; border-color: #991b1b; color: #fca5a5; }
+
+        .clip-body {
+            padding: 14px;
+            font-size: 0.88rem;
+            line-height: 1.7;
+            color: #cbd5e1;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 200px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .clip-body::-webkit-scrollbar { width: 4px; }
+        .clip-body::-webkit-scrollbar-track { background: transparent; }
+        .clip-body::-webkit-scrollbar-thumb { background: #3d4268; border-radius: 2px; }
+
+        .clip-footer { padding: 8px 14px; font-size: 0.72rem; color: #475569; border-top: 1px solid #2d3148; }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            background: #1e2130;
+            border: 1px solid #2d3148;
+            color: #e2e8f0;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            transition: transform 0.3s ease;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .toast.show { transform: translateX(-50%) translateY(0); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">Text-Club</div>
-        <p class="tagline">Instantly share text between any of your devices.<br>No login. No install. Just open and paste.</p>
+    <header>
+        <div class="header-left">
+            <a href="/" class="logo-link">Text-Club</a>
+            <div class="room-badge">Room: <span>{{ room_id }}</span></div>
+        </div>
+        <div class="header-right">
+            <div class="status-dot" id="status-dot"></div>
+            <span class="status-label" id="status-label">Connecting&hellip;</span>
+            <button class="btn-sm" id="copy-link-btn" onclick="copyLink()">Copy Link</button>
+        </div>
+    </header>
 
-        <div class="card">
-            <h2>Create a new room</h2>
-            <p>Get a private link you can open on any other device to sync text in real time.</p>
-            <a href="/new" class="btn-create">Create Room</a>
-
-            <div class="divider">or join an existing room</div>
-
-            <form class="join-form" onsubmit="joinRoom(event)">
-                <input class="join-input" id="room-code" type="text"
-                    placeholder="Enter room code (e.g. a3f2c1b4)"
-                    maxlength="8" autocomplete="off" />
-                <button class="btn-join" type="submit">Join</button>
-            </form>
+    <main>
+        <div class="url-bar">
+            <div class="url-bar-text" id="room-url">Loading&hellip;</div>
         </div>
 
-        <div class="steps">
-            <div class="step"><div class="step-num">1</div><br>Create a room and copy the link</div>
-            <div class="step"><div class="step-num">2</div><br>Open the link on another device</div>
-            <div class="step"><div class="step-num">3</div><br>Type — it appears instantly everywhere</div>
+        <div class="create-card" id="create-card">
+            <h3>
+                New Text Box
+                <span class="edit-mode-banner" id="edit-banner">&#9998; Editing existing box</span>
+            </h3>
+            <input class="label-input" id="clip-label" type="text"
+                placeholder="Label (e.g. My Password, Article, Code snippet&hellip;)" maxlength="80" />
+            <textarea class="text-input" id="clip-text"
+                placeholder="Paste or type anything here &mdash; no word limit&hellip;"></textarea>
+            <div class="create-footer">
+                <span class="char-hint" id="char-hint">0 characters</span>
+                <div class="form-actions">
+                    <button class="btn-cancel" id="cancel-btn" onclick="cancelEdit()">Cancel</button>
+                    <button class="btn-club" id="club-btn" onclick="clubIt()">Club it</button>
+                </div>
+            </div>
         </div>
-    </div>
+
+        <div class="clips-header">
+            <span class="clips-title">Clubbed Boxes</span>
+            <span class="clips-count" id="clips-count"></span>
+        </div>
+
+        <div class="clips-grid" id="clips-grid">
+            <div class="empty-state">No text boxes yet.<br>Write something above and hit <strong>Club it</strong>.</div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
 
     <script>
-        function joinRoom(e) {
-            e.preventDefault();
-            const raw  = document.getElementById("room-code").value.trim().toLowerCase();
-            const code = raw.replace(/[^0-9a-f]/g, "").slice(0, 8);
-            if (code.length === 8) {
-                window.location.href = "/room/" + code;
+        const ROOM_ID = "{{ room_id }}";
+        const roomUrl = window.location.href;
+
+        document.getElementById("room-url").innerHTML =
+            roomUrl.replace(ROOM_ID, "<span>" + ROOM_ID + "</span>");
+
+        const socket = io({ transports: ["websocket", "polling"] });
+
+        socket.on("connect", () => {
+            document.getElementById("status-dot").classList.add("connected");
+            document.getElementById("status-label").textContent = "Connected";
+            socket.emit("join", { room: ROOM_ID });
+        });
+
+        socket.on("disconnect", () => {
+            document.getElementById("status-dot").classList.remove("connected");
+            document.getElementById("status-label").textContent = "Disconnected";
+        });
+
+        socket.on("load_clips",   (data) => renderClips(data.clips));
+        socket.on("clips_update", (data) => renderClips(data.clips));
+        socket.on("error_msg",    (data) => showToast(data.message || "An error occurred"));
+
+        let clipsStore    = {};
+        let editingClipId = null;
+
+        const textInput = document.getElementById("clip-text");
+        const charHint  = document.getElementById("char-hint");
+
+        textInput.addEventListener("input", () => {
+            const n = textInput.value.length;
+            charHint.textContent = n === 1 ? "1 character" : n.toLocaleString() + " characters";
+        });
+
+        function clubIt() {
+            const label = document.getElementById("clip-label").value.trim();
+            const text  = textInput.value;
+            if (!text) { showToast("Add some text first!"); return; }
+
+            if (editingClipId) {
+                socket.emit("update_clip", {
+                    room: ROOM_ID, clip_id: editingClipId,
+                    label: label || "Untitled", text: text
+                });
+                cancelEdit();
             } else {
-                const input = document.getElementById("room-code");
-                input.style.borderColor = "#f472b6";
-                input.placeholder = "Must be an 8-character room code";
-                setTimeout(() => {
-                    input.style.borderColor = "";
-                    input.placeholder = "Enter room code (e.g. a3f2c1b4)";
-                }, 2500);
+                socket.emit("add_clip", { room: ROOM_ID, label: label || "Untitled", text: text });
+                document.getElementById("clip-label").value = "";
+                textInput.value = "";
+                charHint.textContent = "0 characters";
             }
         }
+
+        function editClip(clipId) {
+            const clip = clipsStore[clipId];
+            if (!clip) return;
+            editingClipId = clipId;
+            document.getElementById("clip-label").value = clip.label;
+            textInput.value = clip.text;
+            const n = clip.text.length;
+            charHint.textContent = n === 1 ? "1 character" : n.toLocaleString() + " characters";
+            document.getElementById("edit-banner").style.display = "inline";
+            document.getElementById("cancel-btn").style.display  = "inline-flex";
+            document.getElementById("club-btn").textContent = "Save Edit";
+            document.getElementById("club-btn").classList.add("editing");
+            document.getElementById("create-card").classList.add("editing-mode");
+            document.getElementById("clip-label").focus();
+            document.getElementById("create-card").scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+
+        function cancelEdit() {
+            editingClipId = null;
+            document.getElementById("clip-label").value = "";
+            textInput.value = "";
+            charHint.textContent = "0 characters";
+            document.getElementById("edit-banner").style.display = "none";
+            document.getElementById("cancel-btn").style.display  = "none";
+            document.getElementById("club-btn").textContent = "Club it";
+            document.getElementById("club-btn").classList.remove("editing");
+            document.getElementById("create-card").classList.remove("editing-mode");
+        }
+
+        function deleteClip(clipId) {
+            if (editingClipId === clipId) cancelEdit();
+            socket.emit("delete_clip", { room: ROOM_ID, clip_id: clipId });
+        }
+
+        function copyClipText(clipId) {
+            const clip = clipsStore[clipId];
+            if (!clip) return;
+            navigator.clipboard.writeText(clip.text).then(() => {
+                const btn = document.getElementById("copy-" + clipId);
+                if (btn) {
+                    btn.textContent = "Copied!";
+                    btn.classList.add("copy-done");
+                    setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copy-done"); }, 2000);
+                }
+                showToast("Copied to clipboard");
+            });
+        }
+
+        const EMPTY_HTML = '<div class="empty-state">No text boxes yet.<br>Write something above and hit <strong>Club it</strong>.</div>';
+
+        function renderClips(clips) {
+            const grid  = document.getElementById("clips-grid");
+            const count = document.getElementById("clips-count");
+
+            clipsStore = {};
+            clips.forEach(function(c) { clipsStore[c.id] = c; });
+
+            count.textContent = clips.length === 0 ? "" :
+                clips.length === 1 ? "1 box" : clips.length + " boxes";
+
+            if (!clips.length) { grid.innerHTML = EMPTY_HTML; return; }
+
+            grid.innerHTML = clips.map(function(clip) {
+                var date    = new Date(clip.created_at * 1000);
+                var timeStr = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+                var escaped = escapeHtml(clip.text);
+                var id      = clip.id;
+                return [
+                    '<div class="clip-card" id="clip-' + id + '">',
+                    '  <div class="clip-card-header">',
+                    '    <span class="clip-label" title="' + escapeHtml(clip.label) + '">' + escapeHtml(clip.label) + '</span>',
+                    '    <div class="clip-actions">',
+                    '      <button class="clip-btn" id="copy-' + id + '" onclick="copyClipText(\'' + id + '\')">Copy</button>',
+                    '      <button class="clip-btn" onclick="editClip(\'' + id + '\')">Edit</button>',
+                    '      <button class="clip-btn delete-btn" onclick="deleteClip(\'' + id + '\')">Delete</button>',
+                    '    </div>',
+                    '  </div>',
+                    '  <div class="clip-body">' + escaped + '</div>',
+                    '  <div class="clip-footer">Added at ' + timeStr + '</div>',
+                    '</div>'
+                ].join("");
+            }).join("");
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(roomUrl).then(() => {
+                const btn = document.getElementById("copy-link-btn");
+                btn.textContent = "Copied!";
+                btn.classList.add("copied");
+                showToast("Room link copied");
+                setTimeout(() => { btn.textContent = "Copy Link"; btn.classList.remove("copied"); }, 2000);
+            });
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById("toast");
+            t.textContent = msg;
+            t.classList.add("show");
+            setTimeout(() => t.classList.remove("show"), 2500);
+        }
+
+        window.addEventListener("beforeunload", () => socket.emit("leave", { room: ROOM_ID }));
+        textInput.addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) clubIt(); });
     </script>
 </body>
 </html>
