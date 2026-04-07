@@ -57,7 +57,7 @@ def sanitize_text(raw):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("home.html")
 
 @app.route("/new")
 def new_room():
@@ -74,7 +74,7 @@ def room(room_id):
 
 @app.errorhandler(404)
 def not_found(e):
-    return render_template("index.html"), 404
+    return render_template("home.html"), 404
 
 # ── WebSocket events ──────────────────────────────────────────────────────────
 
