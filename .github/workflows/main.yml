@@ -1,0 +1,13 @@
+name: Keep App Awake
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # This tells GitHub to run this every 10 minutes
+  workflow_dispatch:      # This adds a "Run now" button so we can test it
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Knock on Render Door
+        run: curl -I https://text-club.onrender.com/
